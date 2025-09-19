@@ -17,7 +17,10 @@
 
 ## Запуск проекта
 
-git clone
+``
+ git clone https://github.com/disp06/id-chat.git
+``
+
 pip install -r requirements.txt
 
 Python app.py
