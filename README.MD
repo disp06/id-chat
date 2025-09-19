@@ -1,21 +1,21 @@
 # ID SECRET CHAT
 
-Простой анонимный веб-чат с возможностью создавать приватные комнаты, обмениваться зашифрованными сообщениями и файлами.
+A simple, anonymous web chat with the ability to create private rooms and exchange encrypted messages and files.
 
-## Описание
+## Description
 
-Этот проект реализует веб-приложение для анонимного общения в режиме реального времени с помощью Flask и Flask-SocketIO. Пользователи могут создавать комнаты, присоединяться к ним и обмениваться сообщениями или файлами. Сообщения хранятся только в оперативной памяти на сервере и автоматически удаляются через час неактивности комнаты.
+This project implements a web application for anonymous real-time communication using Flask and Flask-SocketIO. Users can create and join rooms, and exchange messages or files. Messages are stored only in memory on the server and are automatically deleted after an hour of inactivity.
 
-## Основные возможности
+## Key Features
 
-- Создание уникальных комнат для приватного общения
-- Обмен текстовыми сообщениями в режиме реального времени
-- Передача файлов между участниками комнаты
-- Автоматическая очистка неактивных комнат и удаление загруженных файлов
-- Простая и понятная веб-страница с интерфейсом на HTML/CSS/JS
+- Create unique rooms for private communication
+- Real-time text messaging
+- File transfer between room participants
+- Automatic cleaning of inactive rooms and removal of uploaded files
+- Simple and intuitive web page with an HTML/CSS/JS interface
 
 
-## Запуск проекта
+## Start
 
 ``
  git clone https://github.com/disp06/id-chat.git
