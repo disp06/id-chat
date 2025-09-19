@@ -21,9 +21,18 @@
  git clone https://github.com/disp06/id-chat.git
 ``
 
+``
+cd id-chat
+``
+
+``
 pip install -r requirements.txt
+``
 
+``
 Python app.py
+``
 
-Enter
+
+Enter on web:
 http://localhost:5537
