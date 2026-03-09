@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
-ID SECRET CHAT — анонимный шифрованный чат с комнатами.
+ID SECRET CHAT — анонимный шифрованный чат с комнатами (AES-GCM).
 """
 
 import os
 import json
 import logging
+import time
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
 from rooms_manager import rooms_manager
 from crypto import (
     generate_room_secret,
-    generate_room_key,
+    import_secret,
     encrypt_message,
     decrypt_message,
     generate_user_id
@@ -40,66 +41,42 @@ def index():
 def create_room():
     """
     Создание комнаты.
-    Тело: { "password": "" | string }
-    Возвращает: { "room_id": "...", "secret": "...", "salt": "..." (если пароль) }
+    Тело: (пусто)
+    Возвращает: { "room_id": "...", "secret": "..." }
     """
-    data = request.get_json(silent=True) or {}
-    password = data.get('password', '')
-    # Генерация room_id (случайный короткий ID)
     room_id = generate_user_id()[:8]
     secret = generate_room_secret()
-    salt = None
-    if password:
-        key, salt = generate_room_key(secret, password)
-    else:
-        key, salt = generate_room_key(secret, None)
-    # Создаём комнату в менеджере
-    rooms_manager.create_room(room_id, secret, salt)
-    resp = {"room_id": room_id, "secret": secret}
-    if salt:
-        resp["salt"] = base64.urlsafe_b64encode(salt).decode('utf-8')
-    return jsonify(resp), 201
+    rooms_manager.create_room(room_id, secret)
+    return jsonify({"room_id": room_id, "secret": secret}), 201
 
 @app.route('/rooms/<room_id>/join', methods=['POST'])
 def join_room_api(room_id):
     """
     Присоединение к комнате.
-    Тело: { "secret": "...", "password": "" }
-    Возвращает: { "ok": true } или ошибка.
+    Тело: { "secret": "..." }
     """
     data = request.get_json(silent=True) or {}
     secret = data.get('secret', '').strip()
-    password = data.get('password', '')
+    if not secret:
+        return jsonify({"error": "Secret required"}), 400
     room = rooms_manager.get_room(room_id)
     if not room:
         return jsonify({"error": "Room not found or expired"}), 404
-    # Проверяем пароль (если задан)
-    if room.password_salt:
-        if not password:
-            return jsonify({"error": "Password required"}), 403
-        try:
-            key, _ = generate_room_key(secret, password)
-            # Если ключ сгенерирован без ошибок — OK
-        except Exception as e:
-            return jsonify({"error": "Invalid credentials"}), 403
-    else:
-        # Без пароля проверяем только secret
-        try:
-            key, _ = generate_room_key(secret, None)
-        except Exception:
-            return jsonify({"error": "Invalid secret"}), 403
+    try:
+        key = import_secret(secret)
+    except Exception:
+        return jsonify({"error": "Invalid secret"}), 403
     return jsonify({"ok": True})
 
 @app.route('/rooms/<room_id>/messages', methods=['GET'])
 def get_messages(room_id):
     """
-    Получить последние сообщения (ciphertext).
+    Получить последние сообщения (ciphertext + sender + ts).
     """
     room = rooms_manager.get_room(room_id)
     if not room:
         return jsonify({"error": "Room not found"}), 404
     msgs = room.get_recent_messages(50)
-    # Формат: [{ "sender": "...", "ciphertext": "...", "ts": ... }]
     return jsonify({"messages": msgs})
 
 # --- SocketIO events ---
@@ -138,9 +115,7 @@ def on_message(data):
     if not room:
         emit('error', {'msg': 'Room not found'})
         return
-    # Сохраняем в истории
     room.add_message(user_id, ciphertext)
-    # Рассылаем всем в комнате (включая отправителя)
     emit('message', {
         'sender': user_id,
         'ciphertext': ciphertext,
@@ -148,7 +123,7 @@ def on_message(data):
     }, room=room_id)
     logger.debug(f"Message in {room_id} from {user_id}")
 
-# Запуск
+# --- Main ---
 if __name__ == '__main__':
     host = os.getenv('HOST', '0.0.0.0')
     port = int(os.getenv('PORT', 5537))
